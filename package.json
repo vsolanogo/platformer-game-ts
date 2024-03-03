@@ -111,6 +111,7 @@
   "url": "URL",
   "dependencies": {
     "astar-typescript": "^1.2.7",
+    "lodash": "^4.17.21",
     "pixi.js": "^7.4.0"
   }
 }
