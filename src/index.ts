@@ -1,5 +1,4 @@
 import * as PIXI from 'pixi.js';
-import { AStarFinder } from 'astar-typescript';
 import diamondpng from '@/resources/diamond.png';
 import playerWalk1 from '@/resources/player_walking_1.png';
 import playerWalk2 from '@/resources/player_walking_2.png';
@@ -18,22 +17,26 @@ import enemyWalk6 from '@/resources/enemy_walking_6.png';
 import enemyWalk7 from '@/resources/enemy_walking_7.png';
 import enemyWalk8 from '@/resources/enemy_walking_8.png';
 import { WIDTH, HEIGHT } from './constants';
+import { workerCode } from './worker-browserify';
 
-const myMatrix = [];
+let path: number[][];
 
-for (let i = 0; i < 800; i++) {
-  const innerArray = new Array(900).fill(0);
-  myMatrix.push(innerArray);
-}
+const createWorker = (): Worker => {
+  const blobURL = createBlobURL();
+  return new Worker(blobURL);
+};
 
-const aStarInstance = new AStarFinder({
-  grid: {
-    matrix: myMatrix,
-  },
-  heuristic: 'Euclidean',
-  includeStartNode: false,
-  includeEndNode: false,
-});
+const createBlobURL = (): string => {
+  const response = atob(workerCode);
+  const blob = new Blob([response], { type: 'application/javascript' });
+  return URL.createObjectURL(blob);
+};
+
+const workerInstance = createWorker();
+
+workerInstance.onmessage = (e): void => {
+  path = JSON.parse(e.data);
+};
 
 type Point = {
   x: number;
@@ -61,8 +64,6 @@ const enemyWalkingArr = [
   enemyWalk7,
   enemyWalk8,
 ];
-
-let path: number[][];
 
 const options = {
   backgroundColor: 0xeba9c3,
@@ -206,6 +207,25 @@ const tryToMoveEnemy = (
 
 let diamondsCollected = 0;
 
+const findPath = (
+  animatedPlayerSprite: PIXI.Sprite,
+  animatedEnemySprite: PIXI.Sprite,
+): void => {
+  const { x: playerX, y: playerY } = animatedPlayerSprite.getBounds();
+  const { x: enemyX, y: enemyY } = animatedEnemySprite.getBounds();
+
+  const playerXY: Point = {
+    x: Math.max(0, Math.trunc(playerX)),
+    y: Math.max(0, Math.trunc(playerY)),
+  };
+  const enemyXY: Point = {
+    x: Math.max(0, Math.trunc(enemyX)),
+    y: Math.max(0, Math.trunc(enemyY)),
+  };
+
+  workerInstance.postMessage(JSON.stringify({ playerXY, enemyXY }));
+};
+
 const createGameScene = (
   gameScene: PIXI.Container,
 ): ((delay: number) => void) => {
@@ -244,27 +264,11 @@ const createGameScene = (
   const keysMap = {};
   attachListeners(keysMap);
 
-  const findPath = (): void => {
-    const { x: playerX, y: playerY } = animatedPlayerSprite.getBounds();
-    const { x: enemyX, y: enemyY } = animatedEnemySprite.getBounds();
-
-    const playerXY: Point = {
-      x: Math.max(0, Math.trunc(playerX)),
-      y: Math.max(0, Math.trunc(playerY)),
-    };
-    const enemyXY: Point = {
-      x: Math.max(0, Math.trunc(enemyX)),
-      y: Math.max(0, Math.trunc(enemyY)),
-    };
-
-    path = aStarInstance.findPath(playerXY, enemyXY);
-  };
-
-  findPath();
+  findPath(animatedPlayerSprite, animatedEnemySprite);
 
   setInterval(() => {
-    findPath();
-  }, 2000);
+    findPath(animatedPlayerSprite, animatedEnemySprite);
+  }, 500);
 
   return (delay: number): void => {
     tryToMovePlayer(keysMap, animatedPlayerSprite, delay);
@@ -404,3 +408,19 @@ const mainFunc = (): void => {
 };
 
 mainFunc();
+
+// const myMatrix = [];
+
+// for (let i = 0; i < 800; i++) {
+//   const innerArray = new Array(900).fill(0);
+//   myMatrix.push(innerArray);
+// }
+
+// const aStarInstance = new AStarFinder({
+//   grid: {
+//     matrix: myMatrix,
+//   },
+//   heuristic: 'Euclidean',
+//   includeStartNode: false,
+//   includeEndNode: false,
+// });
