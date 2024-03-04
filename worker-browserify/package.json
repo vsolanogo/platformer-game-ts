@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/pathfinding": "^0.0.9",
     "astar-typescript": "^1.2.7",
     "lodash": "^4.17.21"
   }

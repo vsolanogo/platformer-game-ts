@@ -17,31 +17,22 @@ import enemyWalk6 from '@/resources/enemy_walking_6.png';
 import enemyWalk7 from '@/resources/enemy_walking_7.png';
 import enemyWalk8 from '@/resources/enemy_walking_8.png';
 import { WIDTH, HEIGHT } from './constants';
-import { workerCode } from './worker-browserify';
+import PF from 'pathfinding';
 
-let path: number[][];
-
-const createWorker = (): Worker => {
-  const blobURL = createBlobURL();
-  return new Worker(blobURL);
-};
-
-const createBlobURL = (): string => {
-  const response = atob(workerCode);
-  const blob = new Blob([response], { type: 'application/javascript' });
-  return URL.createObjectURL(blob);
-};
-
-const workerInstance = createWorker();
-
-workerInstance.onmessage = (e): void => {
-  path = JSON.parse(e.data);
-};
-
+let thePath: number[][];
 type Point = {
   x: number;
   y: number;
 };
+const myMatrix = [];
+
+for (let i = 0; i < HEIGHT; i++) {
+  const innerArray = new Array(WIDTH).fill(0);
+  myMatrix.push(innerArray);
+}
+
+const grid = new PF.Grid(myMatrix);
+const finder = new PF.AStarFinder();
 
 const playerWalkingArr = [
   playerWalk1,
@@ -176,29 +167,38 @@ const tryToMovePlayer = (
   }
 };
 
+let pathTraversal: number = 0;
+
 const tryToMoveEnemy = (
   animatedEnemySprite: PIXI.AnimatedSprite,
   delay: number,
-  path: number[][],
 ): void => {
-  const speed = 0.7;
   animatedEnemySprite.play();
+  const speed = 1.5;
+
+  if (animatedEnemySprite.position.x <= 0) {
+    animatedEnemySprite.position.x += delay * speed;
+    animatedEnemySprite.scale.x = 1;
+  }
+
+  if (animatedEnemySprite.position.y <= 0) {
+    animatedEnemySprite.position.y += delay * speed;
+  }
 
   try {
-    const newX = path[1][0];
-    const newY = path[1][1];
-    if (newX > animatedEnemySprite.position.x) {
-      animatedEnemySprite.position.x += delay * speed;
-      animatedEnemySprite.scale.x = 1;
-    } else {
-      animatedEnemySprite.position.x -= delay * speed;
-      animatedEnemySprite.scale.x = -1;
-    }
+    if (
+      animatedEnemySprite.position.x > 0 &&
+      animatedEnemySprite.position.y > 0
+    ) {
+      if (animatedEnemySprite.position.x > thePath[pathTraversal + 1][0]) {
+        animatedEnemySprite.scale.x = -1;
+      } else {
+        animatedEnemySprite.scale.x = 1;
+      }
+      animatedEnemySprite.position.x = thePath[pathTraversal + 1][0];
+      animatedEnemySprite.position.y = thePath[pathTraversal + 1][1];
 
-    if (newY > animatedEnemySprite.position.y) {
-      animatedEnemySprite.position.y += delay * speed;
-    } else {
-      animatedEnemySprite.position.y -= delay * speed;
+      pathTraversal++;
     }
   } catch (e) {
     console.log(e);
@@ -207,23 +207,41 @@ const tryToMoveEnemy = (
 
 let diamondsCollected = 0;
 
+let theGrid: PF.Grid = grid;
+
+const findPathGrid = (
+  playerXY: Point,
+  enemyXY: Point,
+  grid: PF.Grid,
+): { path: number[][]; gridBackup: PF.Grid } => {
+  const gridBackup = grid.clone();
+  const path = finder
+    .findPath(playerXY.x, playerXY.y, enemyXY.x, enemyXY.y, grid)
+    .reverse();
+
+  return { path, gridBackup };
+};
+
 const findPath = (
   animatedPlayerSprite: PIXI.Sprite,
   animatedEnemySprite: PIXI.Sprite,
 ): void => {
   const { x: playerX, y: playerY } = animatedPlayerSprite.getBounds();
   const { x: enemyX, y: enemyY } = animatedEnemySprite.getBounds();
-
   const playerXY: Point = {
-    x: Math.max(0, Math.trunc(playerX)),
-    y: Math.max(0, Math.trunc(playerY)),
+    x: Math.max(0, Math.round(playerX)),
+    y: Math.max(0, Math.round(playerY)),
   };
   const enemyXY: Point = {
-    x: Math.max(0, Math.trunc(enemyX)),
-    y: Math.max(0, Math.trunc(enemyY)),
+    x: Math.max(0, Math.round(enemyX)),
+    y: Math.max(0, Math.round(enemyY)),
   };
 
-  workerInstance.postMessage(JSON.stringify({ playerXY, enemyXY }));
+  const { path, gridBackup } = findPathGrid(playerXY, enemyXY, theGrid);
+
+  thePath = path;
+  pathTraversal = 0;
+  theGrid = gridBackup;
 };
 
 const createGameScene = (
@@ -239,6 +257,7 @@ const createGameScene = (
   animatedPlayerSprite.position.x = 100;
   animatedPlayerSprite.position.y = 150;
   animatedPlayerSprite.animationSpeed = 0.05;
+  // animatedPlayerSprite.anchor.set(0.5);
 
   player.addChild(animatedPlayerSprite);
 
@@ -246,6 +265,7 @@ const createGameScene = (
   animatedEnemySprite.position.x = -70;
   animatedEnemySprite.position.y = -70;
   animatedEnemySprite.animationSpeed = 0.05;
+  // animatedEnemySprite.anchor.set(0.5);
 
   player.addChild(animatedEnemySprite);
 
@@ -268,13 +288,13 @@ const createGameScene = (
 
   setInterval(() => {
     findPath(animatedPlayerSprite, animatedEnemySprite);
-  }, 500);
+  }, 1500);
 
   return (delay: number): void => {
     tryToMovePlayer(keysMap, animatedPlayerSprite, delay);
     checkCollision(animatedPlayerSprite, diamonds);
     checkCollisionWithEnemy(animatedPlayerSprite, animatedEnemySprite);
-    tryToMoveEnemy(animatedEnemySprite, delay, path);
+    tryToMoveEnemy(animatedEnemySprite, delay);
   };
 };
 
@@ -408,19 +428,3 @@ const mainFunc = (): void => {
 };
 
 mainFunc();
-
-// const myMatrix = [];
-
-// for (let i = 0; i < 800; i++) {
-//   const innerArray = new Array(900).fill(0);
-//   myMatrix.push(innerArray);
-// }
-
-// const aStarInstance = new AStarFinder({
-//   grid: {
-//     matrix: myMatrix,
-//   },
-//   heuristic: 'Euclidean',
-//   includeStartNode: false,
-//   includeEndNode: false,
-// });

@@ -110,8 +110,10 @@
   "title": "Typescript Webpack Boilerplate",
   "url": "URL",
   "dependencies": {
+    "@types/pathfinding": "^0.0.9",
     "astar-typescript": "^1.2.7",
     "lodash": "^4.17.21",
+    "pathfinding": "^0.4.18",
     "pixi.js": "^7.4.0"
   }
 }

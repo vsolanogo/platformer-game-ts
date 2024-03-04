@@ -11,7 +11,7 @@ const aStarInstance = new AStarFinder({
   grid: {
     matrix: myMatrix,
   },
-  heuristic: 'Euclidean',
+  heuristic: 'Manhattan',
   includeStartNode: false,
   includeEndNode: false,
 });
@@ -26,5 +26,5 @@ self.onmessage = (e) => {
     { x: parsedData.enemyXY.x, y: parsedData.enemyXY.y },
   );
 
-  postMessage(JSON.stringify(res));
+  postMessage(JSON.stringify(res.reverse()));
 };
