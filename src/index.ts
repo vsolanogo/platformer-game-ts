@@ -17,22 +17,21 @@ import enemyWalk6 from '@/resources/enemy_walking_6.png';
 import enemyWalk7 from '@/resources/enemy_walking_7.png';
 import enemyWalk8 from '@/resources/enemy_walking_8.png';
 import { WIDTH, HEIGHT } from './constants';
-import PF from 'pathfinding';
+import { PublisherSubscriberEnemyPath } from './PublisherSubscriber';
 
 let thePath: number[][];
-type Point = {
+export type Point = {
   x: number;
   y: number;
 };
-const myMatrix = [];
+const myMatrix: number[][] = [];
 
 for (let i = 0; i < HEIGHT; i++) {
-  const innerArray = new Array(WIDTH).fill(0);
+  const innerArray: number[] = new Array(WIDTH).fill(0);
   myMatrix.push(innerArray);
 }
 
-const grid = new PF.Grid(myMatrix);
-const finder = new PF.AStarFinder();
+const pubSubEnemyPathInstance = new PublisherSubscriberEnemyPath(myMatrix);
 
 const playerWalkingArr = [
   playerWalk1,
@@ -207,22 +206,14 @@ const tryToMoveEnemy = (
 
 let diamondsCollected = 0;
 
-let theGrid: PF.Grid = grid;
-
-const findPathGrid = (
-  playerXY: Point,
-  enemyXY: Point,
-  grid: PF.Grid,
-): { path: number[][]; gridBackup: PF.Grid } => {
-  const gridBackup = grid.clone();
-  const path = finder
-    .findPath(playerXY.x, playerXY.y, enemyXY.x, enemyXY.y, grid)
-    .reverse();
-
-  return { path, gridBackup };
+const subscribeToPath = (path: number[][]): void => {
+  thePath = path;
+  pathTraversal = 0;
 };
 
-const findPath = (
+pubSubEnemyPathInstance.subscribe(subscribeToPath);
+
+const sendPaths = (
   animatedPlayerSprite: PIXI.Sprite,
   animatedEnemySprite: PIXI.Sprite,
 ): void => {
@@ -237,11 +228,7 @@ const findPath = (
     y: Math.max(0, Math.round(enemyY)),
   };
 
-  const { path, gridBackup } = findPathGrid(playerXY, enemyXY, theGrid);
-
-  thePath = path;
-  pathTraversal = 0;
-  theGrid = gridBackup;
+  pubSubEnemyPathInstance.publish(playerXY, enemyXY);
 };
 
 const createGameScene = (
@@ -284,10 +271,10 @@ const createGameScene = (
   const keysMap = {};
   attachListeners(keysMap);
 
-  findPath(animatedPlayerSprite, animatedEnemySprite);
+  sendPaths(animatedPlayerSprite, animatedEnemySprite);
 
   setInterval(() => {
-    findPath(animatedPlayerSprite, animatedEnemySprite);
+    sendPaths(animatedPlayerSprite, animatedEnemySprite);
   }, 1500);
 
   return (delay: number): void => {
