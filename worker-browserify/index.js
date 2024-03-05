@@ -1,33 +1,30 @@
-const PF = require('pathfinding');
+const { AStarFinder } = require('astar-typescript');
 
-let gridBackup;
-let finder = new PF.AStarFinder();
-
-const matrix = [];
+const myMatrix = [];
 
 for (let i = 0; i < 800; i++) {
-  const innerArray = new Array(1300).fill(0);
-  matrix.push(innerArray);
+  const innerArray = new Array(900).fill(0);
+  myMatrix.push(innerArray);
 }
 
-let grid = new PF.Grid(matrix);
+const aStarInstance = new AStarFinder({
+  grid: {
+    matrix: myMatrix,
+  },
+  heuristic: 'Manhattan',
+  includeStartNode: false,
+  includeEndNode: false,
+});
 
 self.onmessage = (e) => {
   console.log({ e });
 
   const parsedData = JSON.parse(e.data);
-  gridBackup = grid.clone();
-  const res = finder
-    .findPath(
-      parsedData.playerXY.x,
-      parsedData.playerXY.y,
-      parsedData.enemyXY.x,
-      parsedData.enemyXY.y,
-      grid,
-    )
-    .reverse();
 
-  grid = gridBackup;
+  const res = aStarInstance.findPath(
+    { x: parsedData.playerXY.x, y: parsedData.playerXY.y },
+    { x: parsedData.enemyXY.x, y: parsedData.enemyXY.y },
+  );
 
-  postMessage(JSON.stringify(res));
+  postMessage(JSON.stringify(res.reverse()));
 };
