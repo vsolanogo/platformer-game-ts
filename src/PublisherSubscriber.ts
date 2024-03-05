@@ -1,33 +1,38 @@
-import PF from 'pathfinding';
 import type { Point } from './index';
-
+import { workerCode } from './worker-browserify';
 interface FunctionWithId {
   id: string;
   func: (path: number[][]) => void;
 }
 
+const createWorker = (): Worker => {
+  const blobURL = createBlobURL();
+  return new Worker(blobURL);
+};
+
+const createBlobURL = (): string => {
+  const response = atob(workerCode);
+  const blob = new Blob([response], { type: 'application/javascript' });
+  return URL.createObjectURL(blob);
+};
+
 export class PublisherSubscriberEnemyPath {
   private subUid: number;
-  private grid: PF.Grid;
-  private gridBackup: PF.Grid;
   private path: number[][] = [];
   private subscribers: FunctionWithId[] = [];
+  private workerInstance: Worker;
 
-  private finder = new PF.AStarFinder();
-
-  constructor(matrix: number[][]) {
+  constructor() {
     this.subUid = 0;
-    this.grid = new PF.Grid(matrix);
-    this.gridBackup = this.grid.clone();
+
+    this.workerInstance = createWorker();
+    this.workerInstance.onmessage = (e): void => {
+      this.path = JSON.parse(e.data);
+    };
   }
 
   findPathGrid(playerXY: Point, enemyXY: Point): void {
-    this.gridBackup = this.grid.clone();
-    this.path = this.finder
-      .findPath(playerXY.x, playerXY.y, enemyXY.x, enemyXY.y, this.grid)
-      .reverse();
-
-    this.grid = this.gridBackup;
+    this.workerInstance.postMessage(JSON.stringify({ playerXY, enemyXY }));
   }
 
   publish(playerXY: Point, enemyXY: Point): PublisherSubscriberEnemyPath {

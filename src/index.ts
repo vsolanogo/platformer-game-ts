@@ -30,8 +30,59 @@ for (let i = 0; i < HEIGHT; i++) {
   const innerArray: number[] = new Array(WIDTH).fill(0);
   myMatrix.push(innerArray);
 }
+function distance(point1: Point, point2: Point): number {
+  return Math.sqrt(
+    Math.pow(point2.x - point1.x, 2) + Math.pow(point2.y - point1.y, 2),
+  );
+}
 
-const pubSubEnemyPathInstance = new PublisherSubscriberEnemyPath(myMatrix);
+function closestPoint(adolf2: Point, points2: number[][]): number {
+  const adolf: Point = { x: adolf2.x, y: adolf2.y };
+  const points: number[][] = points2.map((i) => [i[0], i[1]]);
+  let minDistance = Infinity;
+  let closestIndex = -1;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const point1: Point = { x: points[i][0], y: points[i][1] };
+    const point2: Point = { x: points[i + 1][0], y: points[i + 1][1] };
+
+    const lineLength = distance(point1, point2);
+    const distanceFromPoint1 = distance(adolf, point1);
+    const distanceFromPoint2 = distance(adolf, point2);
+
+    // Check if Adolf is within the line segment
+    if (
+      Math.abs(lineLength - (distanceFromPoint1 + distanceFromPoint2)) < 0.0001
+    ) {
+      const distanceToLine =
+        Math.abs(
+          (point2.y - point1.y) * adolf.x -
+            (point2.x - point1.x) * adolf.y +
+            point2.x * point1.y -
+            point2.y * point1.x,
+        ) / lineLength;
+
+      if (distanceToLine < minDistance) {
+        minDistance = distanceToLine;
+        closestIndex = i;
+      }
+    } else {
+      // Check distance to each endpoint
+      if (distanceFromPoint1 < minDistance) {
+        minDistance = distanceFromPoint1;
+        closestIndex = i;
+      }
+      if (distanceFromPoint2 < minDistance) {
+        minDistance = distanceFromPoint2;
+        closestIndex = i + 1;
+      }
+    }
+  }
+
+  return closestIndex;
+}
+
+const pubSubEnemyPathInstance = new PublisherSubscriberEnemyPath();
 
 const playerWalkingArr = [
   playerWalk1,
@@ -168,12 +219,23 @@ const tryToMovePlayer = (
 
 let pathTraversal: number = 0;
 
+let enemyX = 0;
+let enemyY = 0;
+let counter = 0.0;
+
 const tryToMoveEnemy = (
   animatedEnemySprite: PIXI.AnimatedSprite,
+  animatedPlayerSprite: PIXI.AnimatedSprite,
   delay: number,
 ): void => {
   animatedEnemySprite.play();
   const speed = 1.5;
+
+  if (counter >= 20) {
+    sendPaths(animatedPlayerSprite, animatedEnemySprite);
+    counter = 0;
+  }
+  counter += delay;
 
   if (animatedEnemySprite.position.x <= 0) {
     animatedEnemySprite.position.x += delay * speed;
@@ -202,13 +264,31 @@ const tryToMoveEnemy = (
   } catch (e) {
     console.log(e);
   }
+
+  enemyX = animatedEnemySprite.position.x;
+  enemyY = animatedEnemySprite.position.y;
 };
 
 let diamondsCollected = 0;
 
-const subscribeToPath = (path: number[][]): void => {
-  thePath = path;
+const setPath = (path: number[][]): void => {
+  // console.log(JSON.stringify({ x: enemyX, y: enemyY, path: path[0] }));
+  const closestIndex = closestPoint({ x: enemyX, y: enemyY }, path);
+  // console.log({ closestIndex });
+  // console.log(path[closestIndex]);
+  console.log(JSON.stringify({ enemyX, enemyY }));
+  thePath = path.slice(closestIndex + 1);
+  console.log(thePath);
+  console.log(JSON.stringify(path.slice(0, 10)));
+
+  // console.log({ thePath });
+  // console.log(JSON.stringify(thePath.slice(0, 10)));
+
   pathTraversal = 0;
+};
+
+const subscribeToPath = (path: number[][]): void => {
+  setPath(path);
 };
 
 pubSubEnemyPathInstance.subscribe(subscribeToPath);
@@ -271,17 +351,11 @@ const createGameScene = (
   const keysMap = {};
   attachListeners(keysMap);
 
-  sendPaths(animatedPlayerSprite, animatedEnemySprite);
-
-  setInterval(() => {
-    sendPaths(animatedPlayerSprite, animatedEnemySprite);
-  }, 1500);
-
   return (delay: number): void => {
     tryToMovePlayer(keysMap, animatedPlayerSprite, delay);
     checkCollision(animatedPlayerSprite, diamonds);
     checkCollisionWithEnemy(animatedPlayerSprite, animatedEnemySprite);
-    tryToMoveEnemy(animatedEnemySprite, delay);
+    tryToMoveEnemy(animatedEnemySprite, animatedPlayerSprite, delay);
   };
 };
 
