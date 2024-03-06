@@ -31,6 +31,20 @@ for (let i = 0; i < HEIGHT; i++) {
   myMatrix.push(innerArray);
 }
 
+const graphics = new PIXI.Graphics();
+
+const drawPoints = (points: number[][]): void => {
+  // Clear the existing graphics
+  graphics.clear();
+
+  // Draw points
+  points.forEach((point) => {
+    graphics.beginFill(0xff0000); // Red color, you can change it as needed
+    graphics.drawCircle(point[0], point[1], 1); // Adjust the radius of the circle as needed
+    graphics.endFill();
+  });
+};
+
 const pubSubEnemyPathInstance = new PublisherSubscriberEnemyPath(myMatrix);
 
 const playerWalkingArr = [
@@ -216,6 +230,7 @@ let diamondsCollected = 0;
 
 const subscribeToPath = (path: number[][]): void => {
   thePath = path;
+  drawPoints(thePath);
   pathTraversal = 0;
 };
 
@@ -364,6 +379,7 @@ const getGameScene = (
 
 const mainFunc = (): void => {
   const app = new PIXI.Application<HTMLCanvasElement>(options);
+  app.stage.addChild(graphics);
 
   let currentScene: PIXI.Container<PIXI.DisplayObject>;
   let counterText: PIXI.Text;
