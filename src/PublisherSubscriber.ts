@@ -68,6 +68,7 @@ export class PublisherSubscriberEnemyPath {
   }
 
   findPathGrid(playerXY: Point, enemyXY: Point): void {
+    const d = Date.now();
     const scaledPointPlayer = scalePoint(
       [playerXY.x, playerXY.y],
       HEIGHT,
@@ -102,6 +103,7 @@ export class PublisherSubscriberEnemyPath {
     );
 
     this.path = PF.Util.expandPath(scaledBackPath);
+    console.log(Date.now() - d);
   }
 
   publish(playerXY: Point, enemyXY: Point): PublisherSubscriberEnemyPath {

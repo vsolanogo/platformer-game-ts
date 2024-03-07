@@ -19,7 +19,6 @@ import enemyWalk8 from '@/resources/enemy_walking_8.png';
 import { WIDTH, HEIGHT } from './constants';
 import { PublisherSubscriberEnemyPath } from './PublisherSubscriber';
 import { createObstacleSprite } from './ObstacleSprite';
-import obstacle from '@/resources/obstacle.png';
 
 let thePath: number[][];
 export type Point = {
@@ -192,7 +191,7 @@ const tryToMoveEnemy = (
   animatedEnemySprite.play();
   const speed = 1.5;
 
-  if (interval >= 40) {
+  if (interval >= 5) {
     sendPaths(
       animatedPlayerSprite,
       animatedEnemySprite,
@@ -262,20 +261,15 @@ const updateMatrixWithObstacle = (
   obstacleSprite: PIXI.Sprite,
   matrix: number[][],
 ): void => {
-  const texture = PIXI.Texture.from(obstacle);
-
   // Get the width and height of the texture
 
   const { x, y, width, height } = obstacleSprite.getBounds();
-  console.log(obstacleSprite.texture);
-  console.log(obstacleSprite.texture.orig.width);
+
   const startX = Math.floor(x);
   const endX = Math.ceil(x + width * 482);
   const startY = Math.floor(y);
   const endY = Math.ceil(y + height * 458);
 
-  console.log({ endY });
-  console.log(texture.orig);
   for (let i = startY; i < endY; i++) {
     for (let j = startX; j < endX; j++) {
       if (matrix[i] && matrix[i][j] !== undefined) {
