@@ -115,6 +115,20 @@ const options = {
 export type GameState = 'idle' | 'playing' | 'lost' | 'won';
 export type ArrowPress = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown';
 
+const graphics = new PIXI.Graphics();
+
+const drawPoints = (points: number[][]): void => {
+  // Clear the existing graphics
+  graphics.clear();
+
+  // Draw points
+  points.forEach((point) => {
+    graphics.beginFill(0xff0000); // Red color, you can change it as needed
+    graphics.drawCircle(point[0], point[1], 1); // Adjust the radius of the circle as needed
+    graphics.endFill();
+  });
+};
+
 // will generate 10-20 diamonds
 const DIAMONDS_COUNT = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
 
@@ -221,7 +235,7 @@ let pathTraversal: number = 0;
 
 let enemyX = 0;
 let enemyY = 0;
-let counter = 0.0;
+let interval = 0.0;
 
 const tryToMoveEnemy = (
   animatedEnemySprite: PIXI.AnimatedSprite,
@@ -230,12 +244,13 @@ const tryToMoveEnemy = (
 ): void => {
   animatedEnemySprite.play();
   const speed = 1.5;
+  pathTraversal += 2;
 
-  if (counter >= 20) {
+  if (interval >= 25) {
     sendPaths(animatedPlayerSprite, animatedEnemySprite);
-    counter = 0;
+    interval = 0.0;
   }
-  counter += delay;
+  interval += delay;
 
   if (animatedEnemySprite.position.x <= 0) {
     animatedEnemySprite.position.x += delay * speed;
@@ -251,15 +266,27 @@ const tryToMoveEnemy = (
       animatedEnemySprite.position.x > 0 &&
       animatedEnemySprite.position.y > 0
     ) {
-      if (animatedEnemySprite.position.x > thePath[pathTraversal + 1][0]) {
-        animatedEnemySprite.scale.x = -1;
-      } else {
+      if (animatedEnemySprite.position.x <= thePath[pathTraversal + 1][0]) {
+        animatedEnemySprite.position.x += delay * speed * 2;
         animatedEnemySprite.scale.x = 1;
+      } else {
+        animatedEnemySprite.position.x -= delay * speed * 2;
+        animatedEnemySprite.scale.x = -1;
       }
-      animatedEnemySprite.position.x = thePath[pathTraversal + 1][0];
-      animatedEnemySprite.position.y = thePath[pathTraversal + 1][1];
 
-      pathTraversal++;
+      if (animatedEnemySprite.position.y <= thePath[pathTraversal + 1][1]) {
+        animatedEnemySprite.position.y += delay * speed * 2;
+      } else {
+        animatedEnemySprite.position.y -= delay * speed * 2;
+      }
+
+      // if (animatedEnemySprite.position.x > thePath[pathTraversal + 1][0]) {
+      // animatedEnemySprite.scale.x = -1;
+      // } else {
+      // animatedEnemySprite.scale.x = 1;
+      // }
+      // animatedEnemySprite.position.x = thePath[pathTraversal + 1][0];
+      // animatedEnemySprite.position.y = thePath[pathTraversal + 1][1];
     }
   } catch (e) {
     console.log(e);
@@ -274,10 +301,12 @@ let diamondsCollected = 0;
 const setPath = (path: number[][]): void => {
   // console.log(JSON.stringify({ x: enemyX, y: enemyY, path: path[0] }));
   const closestIndex = closestPoint({ x: enemyX, y: enemyY }, path);
+  console.log(closestIndex);
   // console.log({ closestIndex });
   // console.log(path[closestIndex]);
   console.log(JSON.stringify({ enemyX, enemyY }));
-  thePath = path.slice(closestIndex + 1);
+  // thePath = path.slice(closestIndex + 1);
+  thePath = path;
   console.log(thePath);
   console.log(JSON.stringify(path.slice(0, 10)));
 
@@ -285,6 +314,7 @@ const setPath = (path: number[][]): void => {
   // console.log(JSON.stringify(thePath.slice(0, 10)));
 
   pathTraversal = 0;
+  drawPoints(thePath);
 };
 
 const subscribeToPath = (path: number[][]): void => {
@@ -444,6 +474,8 @@ const mainFunc = (): void => {
   let updateScene: (delay: number) => void;
 
   document.body.appendChild(app.view);
+
+  app.stage.addChild(graphics);
 
   const handleGameStart = (): void => {
     app.stage.removeChild(currentScene);

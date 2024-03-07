@@ -13,7 +13,7 @@ for (let i = 0; i < 800; i++) {
 let grid = new PF.Grid(matrix);
 
 self.onmessage = (e) => {
-  console.log({ e });
+  console.log(e);
 
   const parsedData = JSON.parse(e.data);
   gridBackup = grid.clone();
@@ -29,5 +29,8 @@ self.onmessage = (e) => {
 
   grid = gridBackup;
 
-  postMessage(JSON.stringify(res));
+  var smoothPath = PF.Util.smoothenPath(grid, res);
+  var newPath = PF.Util.expandPath(smoothPath);
+
+  postMessage(JSON.stringify(newPath));
 };
