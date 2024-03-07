@@ -18,6 +18,8 @@ import enemyWalk7 from '@/resources/enemy_walking_7.png';
 import enemyWalk8 from '@/resources/enemy_walking_8.png';
 import { WIDTH, HEIGHT } from './constants';
 import { PublisherSubscriberEnemyPath } from './PublisherSubscriber';
+import { createObstacleSprite } from './ObstacleSprite';
+import obstacle from '@/resources/obstacle.png';
 
 let thePath: number[][];
 export type Point = {
@@ -44,8 +46,6 @@ const drawPoints = (points: number[][]): void => {
     graphics.endFill();
   });
 };
-
-const pubSubEnemyPathInstance = new PublisherSubscriberEnemyPath(myMatrix);
 
 const playerWalkingArr = [
   playerWalk1,
@@ -186,13 +186,18 @@ let interval = 0.0;
 const tryToMoveEnemy = (
   animatedEnemySprite: PIXI.AnimatedSprite,
   animatedPlayerSprite: PIXI.AnimatedSprite,
+  pubSubEnemyPathInstance: PublisherSubscriberEnemyPath,
   delay: number,
 ): void => {
   animatedEnemySprite.play();
   const speed = 1.5;
 
   if (interval >= 40) {
-    sendPaths(animatedPlayerSprite, animatedEnemySprite);
+    sendPaths(
+      animatedPlayerSprite,
+      animatedEnemySprite,
+      pubSubEnemyPathInstance,
+    );
     interval = 0.0;
   }
   interval += delay;
@@ -234,11 +239,10 @@ const subscribeToPath = (path: number[][]): void => {
   pathTraversal = 0;
 };
 
-pubSubEnemyPathInstance.subscribe(subscribeToPath);
-
 const sendPaths = (
   animatedPlayerSprite: PIXI.Sprite,
   animatedEnemySprite: PIXI.Sprite,
+  pubSubEnemyPathInstance: PublisherSubscriberEnemyPath,
 ): void => {
   const { x: playerX, y: playerY } = animatedPlayerSprite.getBounds();
   const { x: enemyX, y: enemyY } = animatedEnemySprite.getBounds();
@@ -254,9 +258,43 @@ const sendPaths = (
   pubSubEnemyPathInstance.publish(playerXY, enemyXY);
 };
 
+const updateMatrixWithObstacle = (
+  obstacleSprite: PIXI.Sprite,
+  matrix: number[][],
+): void => {
+  const texture = PIXI.Texture.from(obstacle);
+
+  // Get the width and height of the texture
+
+  const { x, y, width, height } = obstacleSprite.getBounds();
+  console.log(obstacleSprite.texture);
+  console.log(obstacleSprite.texture.orig.width);
+  const startX = Math.floor(x);
+  const endX = Math.ceil(x + width * 482);
+  const startY = Math.floor(y);
+  const endY = Math.ceil(y + height * 458);
+
+  console.log({ endY });
+  console.log(texture.orig);
+  for (let i = startY; i < endY; i++) {
+    for (let j = startX; j < endX; j++) {
+      if (matrix[i] && matrix[i][j] !== undefined) {
+        matrix[i][j] = 1;
+      }
+    }
+  }
+};
+
 const createGameScene = (
   gameScene: PIXI.Container,
 ): ((delay: number) => void) => {
+  const obstacleSprite = createObstacleSprite();
+  gameScene.addChild(obstacleSprite);
+  updateMatrixWithObstacle(obstacleSprite, myMatrix);
+
+  const pubSubEnemyPathInstance = new PublisherSubscriberEnemyPath(myMatrix);
+  pubSubEnemyPathInstance.subscribe(subscribeToPath);
+
   const player = new PIXI.Container();
   gameScene.addChild(player);
 
@@ -298,7 +336,12 @@ const createGameScene = (
     tryToMovePlayer(keysMap, animatedPlayerSprite, delay);
     checkCollision(animatedPlayerSprite, diamonds);
     checkCollisionWithEnemy(animatedPlayerSprite, animatedEnemySprite);
-    tryToMoveEnemy(animatedEnemySprite, animatedPlayerSprite, delay);
+    tryToMoveEnemy(
+      animatedEnemySprite,
+      animatedPlayerSprite,
+      pubSubEnemyPathInstance,
+      delay,
+    );
   };
 };
 
@@ -379,6 +422,7 @@ const getGameScene = (
 
 const mainFunc = (): void => {
   const app = new PIXI.Application<HTMLCanvasElement>(options);
+
   app.stage.addChild(graphics);
 
   let currentScene: PIXI.Container<PIXI.DisplayObject>;
