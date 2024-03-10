@@ -261,22 +261,23 @@ const updateMatrixWithObstacle = (
   obstacleSprite: PIXI.Sprite,
   matrix: number[][],
 ): void => {
-  // Get the width and height of the texture
+  // use event update to get read width and height
+  obstacleSprite.texture.once('update', () => {
+    const { x, y, width, height } = obstacleSprite.getBounds();
 
-  const { x, y, width, height } = obstacleSprite.getBounds();
+    const startX = Math.floor(x);
+    const endX = Math.ceil(x + width);
+    const startY = Math.floor(y);
+    const endY = Math.ceil(y + height);
 
-  const startX = Math.floor(x);
-  const endX = Math.ceil(x + width * 482);
-  const startY = Math.floor(y);
-  const endY = Math.ceil(y + height * 458);
-
-  for (let i = startY; i < endY; i++) {
-    for (let j = startX; j < endX; j++) {
-      if (matrix[i] && matrix[i][j] !== undefined) {
-        matrix[i][j] = 1;
+    for (let i = startY; i < endY; i++) {
+      for (let j = startX; j < endX; j++) {
+        if (matrix[i] && matrix[i][j] !== undefined) {
+          matrix[i][j] = 1;
+        }
       }
     }
-  }
+  });
 };
 
 const createGameScene = (
